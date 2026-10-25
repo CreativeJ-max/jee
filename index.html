@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE AI Mock Paper Analyzer & Coach</title>
+    <title>JEE AI Paper & Screenshot Analyzer</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -11,136 +12,278 @@
             theme: {
                 extend: {
                     colors: {
-                        darkBg: '#0b0f19',
+                        darkBg: '#090d16',
                         cardBg: '#111827',
                         cardBorder: '#1f2937',
-                        primary: '#6366f1',
-                        primaryHover: '#4f46e5'
+                        accentIndigo: '#6366f1',
+                        accentEmerald: '#10b981',
+                        accentRose: '#f43f5e'
                     }
                 }
             }
         }
     </script>
+    <!-- FontAwesome & Chart.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-darkBg text-gray-100 min-h-screen font-sans antialiased">
+<body class="bg-darkBg text-gray-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
 
-    <!-- Header Section -->
-    <header class="max-w-7xl mx-auto px-4 py-8 text-center">
-        <h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-5xl mb-3">
-            Upload Your JEE Mock Test Paper
-        </h1>
-        <p class="text-lg text-gray-400 max-w-2xl mx-auto">
-            Upload your question paper, answer key, or response sheet (<span class="text-indigo-400">Any file format accepted</span>) to initiate instant AI breakdown and root cause analysis.
-        </p>
+    <!-- Header Navigation -->
+    <header class="border-b border-cardBorder bg-cardBg/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-atom"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">JEE AI Mock Paper & Screenshot Analyzer</h1>
+                    <p class="text-xs text-gray-400">Automatic answer solving, mistake categorization & weak topic analysis</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="loadDemoData()" class="px-4 py-2 bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-300 border border-indigo-700/50 rounded-xl text-xs font-semibold transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-flask"></i> Load Demo Analysis
+                </button>
+            </div>
+        </div>
     </header>
 
-    <!-- Upload Section -->
-    <main class="max-w-7xl mx-auto px-4 pb-16">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Upload Section Card -->
+        <section class="bg-cardBg border border-cardBorder rounded-3xl p-6 sm:p-8 shadow-2xl mb-10">
+            <div class="text-center max-w-2xl mx-auto mb-8">
+                <h2 class="text-2xl font-bold text-white mb-2">Upload Paper or Question Screenshots</h2>
+                <p class="text-sm text-gray-400">
+                    No answer key needed! The AI automatically solves the questions, evaluates your work/answers, and pinpoints your weak subtopics.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Box 1: Question Paper / Screenshots -->
+                <div class="border-2 border-dashed border-gray-700 hover:border-indigo-500 bg-gray-900/40 rounded-2xl p-6 text-center transition-all cursor-pointer group" onclick="document.getElementById('file-input-1').click()">
+                    <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf" multiple onchange="handleFileSelect(1, this)">
+                    <div class="w-14 h-14 bg-indigo-950/60 text-indigo-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-file-image"></i>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1">1. Question Paper or Screenshots</h3>
+                    <p class="text-xs text-gray-400 mb-4">Upload PDFs or drop images/screenshots of questions</p>
+                    <div id="label-1" class="text-xs text-indigo-400 bg-indigo-950/40 border border-indigo-800/50 py-2 px-4 rounded-xl inline-block font-medium">
+                        <i class="fa-solid fa-upload mr-1"></i> Browse Screenshots or PDF
+                    </div>
+                </div>
+
+                <!-- Box 2: Worked Solutions / Response Sheet -->
+                <div class="border-2 border-dashed border-gray-700 hover:border-emerald-500 bg-gray-900/40 rounded-2xl p-6 text-center transition-all cursor-pointer group" onclick="document.getElementById('file-input-2').click()">
+                    <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.csv,.txt" multiple onchange="handleFileSelect(2, this)">
+                    <div class="w-14 h-14 bg-emerald-950/60 text-emerald-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-signature"></i>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1">2. Your Rough Work or Answers</h3>
+                    <p class="text-xs text-gray-400 mb-4">Upload photos of solved rough pages, OMR, or marked options</p>
+                    <div id="label-2" class="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 py-2 px-4 rounded-xl inline-block font-medium">
+                        <i class="fa-solid fa-upload mr-1"></i> Browse Worked Pages / Screenshots
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Analyze Button -->
+            <div class="mt-8 text-center">
+                <button onclick="startAnalysis()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-95 text-sm inline-flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Scan, Solve & Analyze Paper
+                </button>
+            </div>
+        </section>
+
+        <!-- Results Dashboard Section -->
+        <section id="results-section" class="hidden space-y-8">
             
-            <!-- Box 1: Question Paper -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-6 flex flex-col items-center text-center shadow-lg relative hover:border-indigo-500 transition-all cursor-pointer group" onclick="document.getElementById('file-input-1').click()">
-                <div class="w-14 h-14 bg-indigo-950/50 text-indigo-400 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
-                    <i class="fa-solid fa-file-pdf"></i>
+            <!-- Summary Metric Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
+                    <p class="text-xs font-medium text-gray-400 mb-1">Estimated Score</p>
+                    <p class="text-3xl font-extrabold text-white" id="stat-score">184 <span class="text-sm font-normal text-gray-400">/ 300</span></p>
+                    <span class="inline-block mt-2 text-[10px] bg-emerald-950/80 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800/50">+12 vs last test</span>
                 </div>
-                <h3 class="text-lg font-semibold text-white mb-1">1. Question Paper</h3>
-                <p class="text-xs text-gray-400 mb-6">PDF, Images, or Scanned Mock Test</p>
-                
-                <!-- Hidden Real File Input -->
-                <input type="file" id="file-input-1" class="hidden" onchange="handleFileSelect(1, this)" multiple accept="*/*">
-                
-                <div id="drop-zone-1" class="w-full border-2 border-dashed border-gray-700 rounded-xl p-4 text-sm text-gray-400 group-hover:border-indigo-400 transition-colors">
-                    <span id="file-label-1">Drop file here or <span class="text-indigo-400 font-medium underline">Browse</span></span>
+                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
+                    <p class="text-xs font-medium text-gray-400 mb-1">Overall Accuracy</p>
+                    <p class="text-3xl font-extrabold text-indigo-400" id="stat-accuracy">61.3%</p>
+                    <span class="inline-block mt-2 text-[10px] bg-indigo-950/80 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50">High accuracy in Physics</span>
                 </div>
-            </div>
-
-            <!-- Box 2: Answer Key -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-6 flex flex-col items-center text-center shadow-lg relative hover:border-indigo-500 transition-all cursor-pointer group" onclick="document.getElementById('file-input-2').click()">
-                <div class="w-14 h-14 bg-purple-950/50 text-purple-400 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
-                    <i class="fa-solid fa-key"></i>
+                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
+                    <p class="text-xs font-medium text-gray-400 mb-1">Critical Weak Subtopics</p>
+                    <p class="text-3xl font-extrabold text-rose-400" id="stat-weak">4 Topics</p>
+                    <span class="inline-block mt-2 text-[10px] bg-rose-950/80 text-rose-400 px-2 py-0.5 rounded border border-rose-800/50">Needs immediate practice</span>
                 </div>
-                <h3 class="text-lg font-semibold text-white mb-1">2. Answer Key / Solutions</h3>
-                <p class="text-xs text-gray-400 mb-6">Official answer key or reference solution file</p>
-                
-                <!-- Hidden Real File Input -->
-                <input type="file" id="file-input-2" class="hidden" onchange="handleFileSelect(2, this)" multiple accept="*/*">
-                
-                <div id="drop-zone-2" class="w-full border-2 border-dashed border-gray-700 rounded-xl p-4 text-sm text-gray-400 group-hover:border-purple-400 transition-colors">
-                    <span id="file-label-2">Drop file here or <span class="text-purple-400 font-medium underline">Browse</span></span>
+                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
+                    <p class="text-xs font-medium text-gray-400 mb-1">Calculation Mistakes</p>
+                    <p class="text-3xl font-extrabold text-amber-400" id="stat-calc">3 Errors</p>
+                    <span class="inline-block mt-2 text-[10px] bg-amber-950/80 text-amber-400 px-2 py-0.5 rounded border border-amber-800/50">Avoidable -12 negative marks</span>
                 </div>
             </div>
 
-            <!-- Box 3: Response Sheet -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-6 flex flex-col items-center text-center shadow-lg relative hover:border-indigo-500 transition-all cursor-pointer group" onclick="document.getElementById('file-input-3').click()">
-                <div class="w-14 h-14 bg-emerald-950/50 text-emerald-400 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
-                    <i class="fa-solid fa-square-check"></i>
+            <!-- Dashboard Tabs -->
+            <div class="bg-cardBg border border-cardBorder rounded-3xl p-6 shadow-xl">
+                <div class="flex flex-wrap gap-2 border-b border-cardBorder pb-4 mb-6">
+                    <button id="tab-btn-questions" onclick="switchTab('questions')" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold transition-all">
+                        <i class="fa-solid fa-list-check mr-1.5"></i> Detailed Solutions & Errors
+                    </button>
+                    <button id="tab-btn-weakness" onclick="switchTab('weakness')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-xs font-semibold transition-all">
+                        <i class="fa-solid fa-bullseye mr-1.5"></i> Weak Subtopics Matrix
+                    </button>
+                    <button id="tab-btn-chat" onclick="switchTab('chat')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-xs font-semibold transition-all">
+                        <i class="fa-solid fa-robot mr-1.5"></i> Ask AI Tutor
+                    </button>
                 </div>
-                <h3 class="text-lg font-semibold text-white mb-1">3. Your Response Sheet</h3>
-                <p class="text-xs text-gray-400 mb-6">OMR image, NTA response, CSV, or text</p>
-                
-                <!-- Hidden Real File Input -->
-                <input type="file" id="file-input-3" class="hidden" onchange="handleFileSelect(3, this)" multiple accept="*/*">
-                
-                <div id="drop-zone-3" class="w-full border-2 border-dashed border-gray-700 rounded-xl p-4 text-sm text-gray-400 group-hover:border-emerald-400 transition-colors">
-                    <span id="file-label-3">Drop file here or <span class="text-emerald-400 font-medium underline">Browse</span></span>
+
+                <!-- Tab 1: Detailed Question Solutions -->
+                <div id="tab-content-questions" class="space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                        <h3 class="text-lg font-bold text-white">Question-by-Question Analysis</h3>
+                        <div class="flex gap-2">
+                            <select id="subject-filter" onchange="renderQuestions()" class="bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-gray-300">
+                                <option value="All">All Subjects</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Mathematics">Mathematics</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="questions-list" class="space-y-4"></div>
                 </div>
+
+                <!-- Tab 2: Weak Subtopics Breakdown -->
+                <div id="tab-content-weakness" class="hidden space-y-6">
+                    <h3 class="text-lg font-bold text-white">Subject & Subtopic Performance</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
+                            <h4 class="text-sm font-bold text-indigo-400 mb-3"><i class="fa-solid fa-atom mr-2"></i>Physics Weak Areas</h4>
+                            <ul class="space-y-2 text-xs text-gray-300">
+                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-rose-900/40 flex justify-between">
+                                    <span>Rotational Mechanics (Moment of Inertia)</span>
+                                    <span class="text-rose-400 font-bold">25% Accuracy</span>
+                                </li>
+                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-amber-900/40 flex justify-between">
+                                    <span>Electromagnetic Induction</span>
+                                    <span class="text-amber-400 font-bold">50% Accuracy</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
+                            <h4 class="text-sm font-bold text-emerald-400 mb-3"><i class="fa-solid fa-flask mr-2"></i>Chemistry Weak Areas</h4>
+                            <ul class="space-y-2 text-xs text-gray-300">
+                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-rose-900/40 flex justify-between">
+                                    <span>Ionic Equilibrium (pH of Buffer)</span>
+                                    <span class="text-rose-400 font-bold">0% Accuracy</span>
+                                </li>
+                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-amber-900/40 flex justify-between">
+                                    <span>Aldehydes & Ketones Reagents</span>
+                                    <span class="text-amber-400 font-bold">33% Accuracy</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
+                            <h4 class="text-sm font-bold text-purple-400 mb-3"><i class="fa-solid fa-calculator mr-2"></i>Math Weak Areas</h4>
+                            <ul class="space-y-2 text-xs text-gray-300">
+                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-rose-900/40 flex justify-between">
+                                    <span>Definite Integration (Properties)</span>
+                                    <span class="text-rose-400 font-bold">20% Accuracy</span>
+                                </li>
+                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-amber-900/40 flex justify-between">
+                                    <span>3D Geometry (Shortest Distance)</span>
+                                    <span class="text-amber-400 font-bold">40% Accuracy</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: AI Doubt Chat -->
+                <div id="tab-content-chat" class="hidden space-y-4">
+                    <h3 class="text-lg font-bold text-white mb-2">AI Doubts & Concept Assistant</h3>
+                    <div id="chat-box" class="h-80 bg-gray-900/80 border border-gray-800 rounded-2xl p-4 overflow-y-auto space-y-3 text-xs">
+                        <div class="bg-indigo-950/50 border border-indigo-800/40 rounded-xl p-3 max-w-2xl text-indigo-200">
+                            <strong>AI Coach:</strong> Hello! I have reviewed your test paper and your solved work. Ask me anything about your calculation mistakes, formula derivations, or subtopic revision plans!
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="chat-input" placeholder="e.g. Explain why my approach in Q1 Rotational Motion was wrong..." class="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-xs font-semibold text-white">Send</button>
+                    </div>
+                </div>
+
             </div>
+        </section>
 
-        </div>
-
-        <!-- Action Button -->
-        <div class="mt-10 text-center">
-            <button onclick="runAnalysis()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 text-lg">
-                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Run Instant AI Analysis
-            </button>
-        </div>
     </main>
 
-    <!-- JavaScript to Handle Real File Selection -->
+    <!-- JavaScript Logic -->
     <script>
-        function handleFileSelect(boxId, inputElement) {
-            event.stopPropagation(); // Prevent card click event loop
-            const label = document.getElementById(`file-label-${boxId}`);
-            if (inputElement.files && inputElement.files.length > 0) {
-                const fileNames = Array.from(inputElement.files).map(f => f.name).join(', ');
-                label.innerHTML = `<span class="text-emerald-400 font-medium"><i class="fa-solid fa-check-circle mr-1"></i> ${fileNames}</span>`;
+        // Sample Question Dataset
+        const sampleQuestions = [
+            {
+                q_no: 1,
+                subject: "Physics",
+                subtopic: "Rotational Dynamics (Moment of Inertia)",
+                status: "Incorrect",
+                user_ans: "C",
+                correct_ans: "B",
+                mistake_type: "Formula Misapplication",
+                question_text: "A solid cylinder of mass M and radius R rolls without slipping down an inclined plane of inclination θ. The acceleration of the cylinder is:",
+                solution: "Using standard rolling formula: a = (g sin θ) / (1 + I / (M R²)). For a solid cylinder, I = (1/2) M R². Therefore, a = (g sin θ) / (1 + 1/2) = (2/3) g sin θ.",
+                mistake_desc: "You used the moment of inertia formula for a hollow cylinder (I = MR²) instead of a solid cylinder (I = 0.5 MR²)."
+            },
+            {
+                q_no: 2,
+                subject: "Chemistry",
+                subtopic: "Ionic Equilibrium (Buffer pH)",
+                status: "Incorrect",
+                user_ans: "4.57",
+                correct_ans: "4.74",
+                mistake_type: "Calculation Error",
+                question_text: "Calculate the pH of a buffer solution prepared by mixing 0.1 M CH3COOH and 0.1 M CH3COONa (pKa of CH3COOH = 4.74).",
+                solution: "Using Henderson-Hasselbalch equation: pH = pKa + log([Salt]/[Acid]). Since [Salt] = [Acid] = 0.1 M, log(1) = 0. Therefore, pH = pKa = 4.74.",
+                mistake_desc: "Your setup was completely correct, but you made a logarithm calculation error while taking log(0.1/0.1)."
+            },
+            {
+                q_no: 3,
+                subject: "Mathematics",
+                subtopic: "Definite Integration (King's Property)",
+                status: "Correct",
+                user_ans: "π/4",
+                correct_ans: "π/4",
+                mistake_type: "None",
+                question_text: "Evaluate the integral ∫[0 to π/2] (sin x) / (sin x + cos x) dx.",
+                solution: "Apply King's Property: I = ∫[0 to π/2] (cos x) / (cos x + sin x) dx. Adding both equations gives 2I = ∫[0 to π/2] 1 dx = π/2. Hence, I = π/4.",
+                mistake_desc: "Perfect execution!"
+            }
+        ];
+
+        function handleFileSelect(boxNum, input) {
+            const label = document.getElementById(`label-${boxNum}`);
+            if (input.files.length > 0) {
+                const names = Array.from(input.files).map(f => f.name).join(', ');
+                label.innerHTML = `<i class="fa-solid fa-check mr-1"></i> ${input.files.length} File(s) Attached: ${names.slice(0, 25)}...`;
+                label.className = "text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-700/60 py-2 px-4 rounded-xl inline-block font-medium";
             }
         }
 
-        // Enable Drag and Drop support
-        ['1', '2', '3'].forEach(id => {
-            const card = document.getElementById(`file-input-${id}`).parentElement;
-            
-            card.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                card.classList.add('border-indigo-500', 'bg-indigo-950/20');
-            });
-
-            card.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                card.classList.remove('border-indigo-500', 'bg-indigo-950/20');
-            });
-
-            card.addEventListener('drop', (e) => {
-                e.preventDefault();
-                card.classList.remove('border-indigo-500', 'bg-indigo-950/20');
-                const fileInput = document.getElementById(`file-input-${id}`);
-                fileInput.files = e.dataTransfer.files;
-                handleFileSelect(id, fileInput);
-            });
-        });
-
-        function runAnalysis() {
+        function startAnalysis() {
             const f1 = document.getElementById('file-input-1').files.length;
-            const f2 = document.getElementById('file-input-2').files.length;
-            
-            if (f1 === 0 || f2 === 0) {
-                alert('Please upload at least the Question Paper and Answer Key files before running analysis.');
+            if (f1 === 0) {
+                alert("Please attach at least 1 Question Screenshot or PDF before running analysis!");
                 return;
             }
-            alert('Files successfully attached! Initializing AI Mock Paper Analyzer...');
+            loadDemoData();
         }
-    </script>
-</body>
-</html>
+
+        function loadDemoData() {
+            document.getElementById('results-section').classList.remove('hidden');
+            renderQuestions();
+            window.scrollTo({ top: document
