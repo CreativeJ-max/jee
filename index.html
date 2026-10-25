@@ -1,289 +1,73 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE AI Paper & Screenshot Analyzer</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#090d16',
-                        cardBg: '#111827',
-                        cardBorder: '#1f2937',
-                        accentIndigo: '#6366f1',
-                        accentEmerald: '#10b981',
-                        accentRose: '#f43f5e'
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- FontAwesome & Chart.js -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="bg-darkBg text-gray-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+import streamlit as st
+from google import genai
+from google.genai import types
+import json
 
-    <!-- Header Navigation -->
-    <header class="border-b border-cardBorder bg-cardBg/50 backdrop-blur sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xl font-bold">
-                    <i class="fa-solid fa-atom"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white tracking-tight">JEE AI Mock Paper & Screenshot Analyzer</h1>
-                    <p class="text-xs text-gray-400">Automatic answer solving, mistake categorization & weak topic analysis</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="loadDemoData()" class="px-4 py-2 bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-300 border border-indigo-700/50 rounded-xl text-xs font-semibold transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-flask"></i> Load Demo Analysis
-                </button>
-            </div>
-        </div>
-    </header>
+st.set_page_config(page_title="JEE AI Paper Analyzer", layout="wide")
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <!-- Upload Section Card -->
-        <section class="bg-cardBg border border-cardBorder rounded-3xl p-6 sm:p-8 shadow-2xl mb-10">
-            <div class="text-center max-w-2xl mx-auto mb-8">
-                <h2 class="text-2xl font-bold text-white mb-2">Upload Paper or Question Screenshots</h2>
-                <p class="text-sm text-gray-400">
-                    No answer key needed! The AI automatically solves the questions, evaluates your work/answers, and pinpoints your weak subtopics.
-                </p>
-            </div>
+st.title("⚡ JEE AI Mock Paper & Screenshot Analyzer")
+st.markdown("Upload your question paper or screenshots and your worked rough sheets. The AI will solve the paper, grade your work, and analyze your weak subtopics.")
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+# Sidebar for API Key and Uploads
+with st.sidebar:
+    st.header("🔑 Configuration")
+    api_key = st.text_input("Gemini API Key", type="password")
+    
+    st.header("📁 Upload Files")
+    q_files = st.file_uploader("1. Question Paper / Screenshots", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
+    w_files = st.file_uploader("2. Your Rough Work / Solutions", type=["pdf", "png", "jpg", "jpeg", "csv"], accept_multiple_files=True)
+    
+    run_btn = st.button("🚀 Analyze Paper", type="primary", use_container_width=True)
+
+if run_btn:
+    if not api_key:
+        st.error("Please enter your Google Gemini API Key.")
+    elif not q_files:
+        st.error("Please upload at least one question paper or screenshot.")
+    else:
+        with st.spinner("🤖 AI is scanning your files, solving the questions, and evaluating your mistakes..."):
+            try:
+                client = genai.Client(api_key=api_key)
                 
-                <!-- Box 1: Question Paper / Screenshots -->
-                <div class="border-2 border-dashed border-gray-700 hover:border-indigo-500 bg-gray-900/40 rounded-2xl p-6 text-center transition-all cursor-pointer group" onclick="document.getElementById('file-input-1').click()">
-                    <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf" multiple onchange="handleFileSelect(1, this)">
-                    <div class="w-14 h-14 bg-indigo-950/60 text-indigo-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-file-image"></i>
-                    </div>
-                    <h3 class="text-base font-semibold text-white mb-1">1. Question Paper or Screenshots</h3>
-                    <p class="text-xs text-gray-400 mb-4">Upload PDFs or drop images/screenshots of questions</p>
-                    <div id="label-1" class="text-xs text-indigo-400 bg-indigo-950/40 border border-indigo-800/50 py-2 px-4 rounded-xl inline-block font-medium">
-                        <i class="fa-solid fa-upload mr-1"></i> Browse Screenshots or PDF
-                    </div>
-                </div>
+                # Upload files to Gemini
+                uploaded_g_files = []
+                for f in q_files + w_files:
+                    g_file = client.files.upload(file=f)
+                    uploaded_g_files.append(g_file)
+                
+                prompt = """
+                You are an expert JEE coach. Analyze these question files and student work files.
+                Provide a JSON response with:
+                1. "summary": estimated total score (out of 300), accuracy percentage, and a list of weak subtopics.
+                2. "questions": an array of analyzed questions containing q_no, subject, subtopic, status (Correct/Incorrect), user_ans, correct_ans, mistake_type, solution, and mistake_desc.
+                Return strictly valid JSON.
+                """
+                
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=[*uploaded_g_files, prompt],
+                    config=types.GenerateContentConfig(response_mime_type="application/json")
+                )
+                
+                data = json.loads(response.text)
+                st.session_state['data'] = data
+                st.success("Analysis Complete!")
+            except Exception as e:
+                st.error(f"Error during analysis: {e}")
 
-                <!-- Box 2: Worked Solutions / Response Sheet -->
-                <div class="border-2 border-dashed border-gray-700 hover:border-emerald-500 bg-gray-900/40 rounded-2xl p-6 text-center transition-all cursor-pointer group" onclick="document.getElementById('file-input-2').click()">
-                    <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.csv,.txt" multiple onchange="handleFileSelect(2, this)">
-                    <div class="w-14 h-14 bg-emerald-950/60 text-emerald-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-signature"></i>
-                    </div>
-                    <h3 class="text-base font-semibold text-white mb-1">2. Your Rough Work or Answers</h3>
-                    <p class="text-xs text-gray-400 mb-4">Upload photos of solved rough pages, OMR, or marked options</p>
-                    <div id="label-2" class="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 py-2 px-4 rounded-xl inline-block font-medium">
-                        <i class="fa-solid fa-upload mr-1"></i> Browse Worked Pages / Screenshots
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Analyze Button -->
-            <div class="mt-8 text-center">
-                <button onclick="startAnalysis()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-95 text-sm inline-flex items-center gap-2">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Scan, Solve & Analyze Paper
-                </button>
-            </div>
-        </section>
-
-        <!-- Results Dashboard Section -->
-        <section id="results-section" class="hidden space-y-8">
-            
-            <!-- Summary Metric Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
-                    <p class="text-xs font-medium text-gray-400 mb-1">Estimated Score</p>
-                    <p class="text-3xl font-extrabold text-white" id="stat-score">184 <span class="text-sm font-normal text-gray-400">/ 300</span></p>
-                    <span class="inline-block mt-2 text-[10px] bg-emerald-950/80 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800/50">+12 vs last test</span>
-                </div>
-                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
-                    <p class="text-xs font-medium text-gray-400 mb-1">Overall Accuracy</p>
-                    <p class="text-3xl font-extrabold text-indigo-400" id="stat-accuracy">61.3%</p>
-                    <span class="inline-block mt-2 text-[10px] bg-indigo-950/80 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50">High accuracy in Physics</span>
-                </div>
-                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
-                    <p class="text-xs font-medium text-gray-400 mb-1">Critical Weak Subtopics</p>
-                    <p class="text-3xl font-extrabold text-rose-400" id="stat-weak">4 Topics</p>
-                    <span class="inline-block mt-2 text-[10px] bg-rose-950/80 text-rose-400 px-2 py-0.5 rounded border border-rose-800/50">Needs immediate practice</span>
-                </div>
-                <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-lg">
-                    <p class="text-xs font-medium text-gray-400 mb-1">Calculation Mistakes</p>
-                    <p class="text-3xl font-extrabold text-amber-400" id="stat-calc">3 Errors</p>
-                    <span class="inline-block mt-2 text-[10px] bg-amber-950/80 text-amber-400 px-2 py-0.5 rounded border border-amber-800/50">Avoidable -12 negative marks</span>
-                </div>
-            </div>
-
-            <!-- Dashboard Tabs -->
-            <div class="bg-cardBg border border-cardBorder rounded-3xl p-6 shadow-xl">
-                <div class="flex flex-wrap gap-2 border-b border-cardBorder pb-4 mb-6">
-                    <button id="tab-btn-questions" onclick="switchTab('questions')" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold transition-all">
-                        <i class="fa-solid fa-list-check mr-1.5"></i> Detailed Solutions & Errors
-                    </button>
-                    <button id="tab-btn-weakness" onclick="switchTab('weakness')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-xs font-semibold transition-all">
-                        <i class="fa-solid fa-bullseye mr-1.5"></i> Weak Subtopics Matrix
-                    </button>
-                    <button id="tab-btn-chat" onclick="switchTab('chat')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-xs font-semibold transition-all">
-                        <i class="fa-solid fa-robot mr-1.5"></i> Ask AI Tutor
-                    </button>
-                </div>
-
-                <!-- Tab 1: Detailed Question Solutions -->
-                <div id="tab-content-questions" class="space-y-4">
-                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-                        <h3 class="text-lg font-bold text-white">Question-by-Question Analysis</h3>
-                        <div class="flex gap-2">
-                            <select id="subject-filter" onchange="renderQuestions()" class="bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-gray-300">
-                                <option value="All">All Subjects</option>
-                                <option value="Physics">Physics</option>
-                                <option value="Chemistry">Chemistry</option>
-                                <option value="Mathematics">Mathematics</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="questions-list" class="space-y-4"></div>
-                </div>
-
-                <!-- Tab 2: Weak Subtopics Breakdown -->
-                <div id="tab-content-weakness" class="hidden space-y-6">
-                    <h3 class="text-lg font-bold text-white">Subject & Subtopic Performance</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
-                            <h4 class="text-sm font-bold text-indigo-400 mb-3"><i class="fa-solid fa-atom mr-2"></i>Physics Weak Areas</h4>
-                            <ul class="space-y-2 text-xs text-gray-300">
-                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-rose-900/40 flex justify-between">
-                                    <span>Rotational Mechanics (Moment of Inertia)</span>
-                                    <span class="text-rose-400 font-bold">25% Accuracy</span>
-                                </li>
-                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-amber-900/40 flex justify-between">
-                                    <span>Electromagnetic Induction</span>
-                                    <span class="text-amber-400 font-bold">50% Accuracy</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
-                            <h4 class="text-sm font-bold text-emerald-400 mb-3"><i class="fa-solid fa-flask mr-2"></i>Chemistry Weak Areas</h4>
-                            <ul class="space-y-2 text-xs text-gray-300">
-                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-rose-900/40 flex justify-between">
-                                    <span>Ionic Equilibrium (pH of Buffer)</span>
-                                    <span class="text-rose-400 font-bold">0% Accuracy</span>
-                                </li>
-                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-amber-900/40 flex justify-between">
-                                    <span>Aldehydes & Ketones Reagents</span>
-                                    <span class="text-amber-400 font-bold">33% Accuracy</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
-                            <h4 class="text-sm font-bold text-purple-400 mb-3"><i class="fa-solid fa-calculator mr-2"></i>Math Weak Areas</h4>
-                            <ul class="space-y-2 text-xs text-gray-300">
-                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-rose-900/40 flex justify-between">
-                                    <span>Definite Integration (Properties)</span>
-                                    <span class="text-rose-400 font-bold">20% Accuracy</span>
-                                </li>
-                                <li class="p-2.5 bg-gray-800/60 rounded-xl border border-amber-900/40 flex justify-between">
-                                    <span>3D Geometry (Shortest Distance)</span>
-                                    <span class="text-amber-400 font-bold">40% Accuracy</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 3: AI Doubt Chat -->
-                <div id="tab-content-chat" class="hidden space-y-4">
-                    <h3 class="text-lg font-bold text-white mb-2">AI Doubts & Concept Assistant</h3>
-                    <div id="chat-box" class="h-80 bg-gray-900/80 border border-gray-800 rounded-2xl p-4 overflow-y-auto space-y-3 text-xs">
-                        <div class="bg-indigo-950/50 border border-indigo-800/40 rounded-xl p-3 max-w-2xl text-indigo-200">
-                            <strong>AI Coach:</strong> Hello! I have reviewed your test paper and your solved work. Ask me anything about your calculation mistakes, formula derivations, or subtopic revision plans!
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <input type="text" id="chat-input" placeholder="e.g. Explain why my approach in Q1 Rotational Motion was wrong..." class="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500">
-                        <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-xs font-semibold text-white">Send</button>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-    </main>
-
-    <!-- JavaScript Logic -->
-    <script>
-        // Sample Question Dataset
-        const sampleQuestions = [
-            {
-                q_no: 1,
-                subject: "Physics",
-                subtopic: "Rotational Dynamics (Moment of Inertia)",
-                status: "Incorrect",
-                user_ans: "C",
-                correct_ans: "B",
-                mistake_type: "Formula Misapplication",
-                question_text: "A solid cylinder of mass M and radius R rolls without slipping down an inclined plane of inclination θ. The acceleration of the cylinder is:",
-                solution: "Using standard rolling formula: a = (g sin θ) / (1 + I / (M R²)). For a solid cylinder, I = (1/2) M R². Therefore, a = (g sin θ) / (1 + 1/2) = (2/3) g sin θ.",
-                mistake_desc: "You used the moment of inertia formula for a hollow cylinder (I = MR²) instead of a solid cylinder (I = 0.5 MR²)."
-            },
-            {
-                q_no: 2,
-                subject: "Chemistry",
-                subtopic: "Ionic Equilibrium (Buffer pH)",
-                status: "Incorrect",
-                user_ans: "4.57",
-                correct_ans: "4.74",
-                mistake_type: "Calculation Error",
-                question_text: "Calculate the pH of a buffer solution prepared by mixing 0.1 M CH3COOH and 0.1 M CH3COONa (pKa of CH3COOH = 4.74).",
-                solution: "Using Henderson-Hasselbalch equation: pH = pKa + log([Salt]/[Acid]). Since [Salt] = [Acid] = 0.1 M, log(1) = 0. Therefore, pH = pKa = 4.74.",
-                mistake_desc: "Your setup was completely correct, but you made a logarithm calculation error while taking log(0.1/0.1)."
-            },
-            {
-                q_no: 3,
-                subject: "Mathematics",
-                subtopic: "Definite Integration (King's Property)",
-                status: "Correct",
-                user_ans: "π/4",
-                correct_ans: "π/4",
-                mistake_type: "None",
-                question_text: "Evaluate the integral ∫[0 to π/2] (sin x) / (sin x + cos x) dx.",
-                solution: "Apply King's Property: I = ∫[0 to π/2] (cos x) / (cos x + sin x) dx. Adding both equations gives 2I = ∫[0 to π/2] 1 dx = π/2. Hence, I = π/4.",
-                mistake_desc: "Perfect execution!"
-            }
-        ];
-
-        function handleFileSelect(boxNum, input) {
-            const label = document.getElementById(`label-${boxNum}`);
-            if (input.files.length > 0) {
-                const names = Array.from(input.files).map(f => f.name).join(', ');
-                label.innerHTML = `<i class="fa-solid fa-check mr-1"></i> ${input.files.length} File(s) Attached: ${names.slice(0, 25)}...`;
-                label.className = "text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-700/60 py-2 px-4 rounded-xl inline-block font-medium";
-            }
-        }
-
-        function startAnalysis() {
-            const f1 = document.getElementById('file-input-1').files.length;
-            if (f1 === 0) {
-                alert("Please attach at least 1 Question Screenshot or PDF before running analysis!");
-                return;
-            }
-            loadDemoData();
-        }
-
-        function loadDemoData() {
-            document.getElementById('results-section').classList.remove('hidden');
-            renderQuestions();
-            window.scrollTo({ top: document
+# Display Results if available
+if 'data' in st.session_state:
+    data = st.session_state['data']
+    summary = data.get("summary", {})
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Estimated Score", summary.get("total_score", "N/A"))
+    col2.metric("Accuracy", summary.get("accuracy", "N/A"))
+    col3.metric("Weak Subtopics Found", len(summary.get("weak_topics", [])))
+    
+    st.subheader("Detailed Question Breakdown")
+    for q in data.get("questions", []):
+        with st.expander(f"Q{q.get('q_no')} | {q.get('subject')} - {q.get('subtopic')} ({q.get('status')})"):
+            st.write(f"**Mistake Type:** {q.get('mistake_type')}")
+            st.write(f"**Step-by-Step Solution:** {q.get('solution')}")
+            st.write(f"**AI Root Cause:** {q.get('mistake_desc')}")
